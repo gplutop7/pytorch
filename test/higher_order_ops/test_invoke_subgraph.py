@@ -1861,7 +1861,7 @@ class GraphModule(torch.nn.Module):
 """,
             )
 
-    @requires_cuda_and_triton
+    @requires_gpu
     def test_return_none(self):
         from torch.nn import functional as F
 
