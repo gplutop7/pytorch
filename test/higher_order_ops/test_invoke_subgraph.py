@@ -216,6 +216,44 @@ class TestInvokeSubgraph(TestCase):
 
 
 @skipIfTorchDynamo("Not a torch._dynamo test")
+class TestInvokeSubgraphCUDA(TestCase):
+    @requires_cuda_and_triton
+    @unittest.skipIf(not SM80OrLater, "Requires sm80 or later.")
+    def test_sdpa(self):
+        @nested_compile_region
+        def gn(q, k, v):
+            return torch.nn.functional.scaled_dot_product_attention(
+                q, k, v, attn_mask=None, dropout_p=0.0, is_causal=True
+            )
+
+        def fn(q, k, v):
+            with torch.nn.attention.sdpa_kernel(
+                [torch.nn.attention.SDPBackend.FLASH_ATTENTION]
+            ):
+                return gn(q, k, v)
+
+        q = torch.randn(
+            1, 1, 32, 32, device="cuda", dtype=torch.bfloat16, requires_grad=True
+        )
+        k = torch.randn(
+            1, 1, 32, 32, device="cuda", dtype=torch.bfloat16, requires_grad=True
+        )
+        v = torch.randn(
+            1, 1, 32, 32, device="cuda", dtype=torch.bfloat16, requires_grad=True
+        )
+
+        ref = fn(q, k, v)
+        opt_fn = torch.compile(fn, backend="inductor", fullgraph=True)
+        res = opt_fn(q, k, v)
+        res.sum().backward()
+        self.assertEqual(ref, res)
+
+        res = opt_fn(q, k, v)
+        res.sum().backward()
+
+
+
+@skipIfTorchDynamo("Not a torch._dynamo test")
 @torch._dynamo.config.patch(canonicalize_output_graph_node_order=True)
 class TestInvokeSubgraphCompile(TestCase):
     def count_unique_get_attr_nodes(self, gm, args, expected):
@@ -679,40 +717,6 @@ class GraphModule(torch.nn.Module):
 
         self.assertEqual(ref, res)
         self.assertEqual(x.grad, x_clone.grad)
-
-    @requires_cuda_and_triton
-    @unittest.skipIf(not SM80OrLater, "Requires sm80 or later.")
-    def test_sdpa(self):
-        @nested_compile_region
-        def gn(q, k, v):
-            return torch.nn.functional.scaled_dot_product_attention(
-                q, k, v, attn_mask=None, dropout_p=0.0, is_causal=True
-            )
-
-        def fn(q, k, v):
-            with torch.nn.attention.sdpa_kernel(
-                [torch.nn.attention.SDPBackend.FLASH_ATTENTION]
-            ):
-                return gn(q, k, v)
-
-        q = torch.randn(
-            1, 1, 32, 32, device="cuda", dtype=torch.bfloat16, requires_grad=True
-        )
-        k = torch.randn(
-            1, 1, 32, 32, device="cuda", dtype=torch.bfloat16, requires_grad=True
-        )
-        v = torch.randn(
-            1, 1, 32, 32, device="cuda", dtype=torch.bfloat16, requires_grad=True
-        )
-
-        ref = fn(q, k, v)
-        opt_fn = torch.compile(fn, backend="inductor", fullgraph=True)
-        res = opt_fn(q, k, v)
-        res.sum().backward()
-        self.assertEqual(ref, res)
-
-        res = opt_fn(q, k, v)
-        res.sum().backward()
 
     def test_symint_from_fwd_to_bwd(self):
         @nested_compile_region
@@ -1783,27 +1787,6 @@ class GraphModule(torch.nn.Module):
             return (sin,)
 """,
             )
-
-    @requires_cuda_and_triton
-    def test_return_none(self):
-        from torch.nn import functional as F
-
-        weight = torch.ones(
-            1000, device="cuda:0", dtype=torch.float32, requires_grad=True
-        )
-        ones = torch.ones(1000, device="cuda:0", dtype=torch.float32)
-
-        @nested_compile_region
-        def fn(x, train):
-            return F.dropout(x * weight, 0.33, train)
-
-        @torch._dynamo.optimize_assert("inductor")
-        def run(x, train=True):
-            return fn(x, train)
-
-        r1 = run(ones, train=False)
-        r1.sum().backward()
-        weight.grad.clone()
 
     @torch._dynamo.config.patch(inline_single_use_invoke_subgraph=False)
     def test_return_none_from_fwd(self):
@@ -5059,6 +5042,32 @@ class GraphModule(torch.nn.Module):
             ignore_comments=True,
             ignore_empty_lines=True,
         )
+
+
+@skipIfTorchDynamo("Not a torch._dynamo test")
+@torch._dynamo.config.patch(canonicalize_output_graph_node_order=True)
+class TestInvokeSubgraphCompileCUDA(TestCase):
+    @requires_cuda_and_triton
+    def test_return_none(self):
+        from torch.nn import functional as F
+
+        weight = torch.ones(
+            1000, device="cuda:0", dtype=torch.float32, requires_grad=True
+        )
+        ones = torch.ones(1000, device="cuda:0", dtype=torch.float32)
+
+        @nested_compile_region
+        def fn(x, train):
+            return F.dropout(x * weight, 0.33, train)
+
+        @torch._dynamo.optimize_assert("inductor")
+        def run(x, train=True):
+            return fn(x, train)
+
+        r1 = run(ones, train=False)
+        r1.sum().backward()
+        weight.grad.clone()
+
 
 
 if __name__ == "__main__":
