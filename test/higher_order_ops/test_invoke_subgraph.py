@@ -216,8 +216,8 @@ class TestInvokeSubgraph(TestCase):
 
 
 @skipIfTorchDynamo("Not a torch._dynamo test")
+@requires_cuda_and_triton
 class TestInvokeSubgraphCUDA(TestCase):
-    @requires_cuda_and_triton
     @unittest.skipIf(not SM80OrLater, "Requires sm80 or later.")
     def test_sdpa(self):
         @nested_compile_region
@@ -5046,8 +5046,8 @@ class GraphModule(torch.nn.Module):
 
 @skipIfTorchDynamo("Not a torch._dynamo test")
 @torch._dynamo.config.patch(canonicalize_output_graph_node_order=True)
+@requires_cuda_and_triton
 class TestInvokeSubgraphCompileCUDA(TestCase):
-    @requires_cuda_and_triton
     def test_return_none(self):
         from torch.nn import functional as F
 
