@@ -3046,6 +3046,7 @@ class <lambda>(torch.nn.Module):
 
 
 @skipIfTorchDynamo("Not a torch._dynamo test")
+@torch._dynamo.config.patch(canonicalize_output_graph_node_order=True)
 class TestInvokeSubgraphCompileDevice(TestCase):
     @requires_gpu
     def test_return_none(self):
@@ -3067,35 +3068,6 @@ class TestInvokeSubgraphCompileDevice(TestCase):
         r1 = run(ones, train=False)
         r1.sum().backward()
         weight.grad.clone()
-
-    @requires_gpu
-    def test_ac_rng_cudagraphs(self):
-        def fn1(q, k, v):
-            return torch.nn.functional.scaled_dot_product_attention(
-                q, k, v, attn_mask=None, dropout_p=0.5, is_causal=True
-            )
-
-        @nested_compile_region
-        def fn1_checkpoint(q, k, v):
-            return torch.utils.checkpoint.checkpoint(fn1, q, k, v, use_reentrant=False)
-
-        def fn(q, k, v):
-            return fn1_checkpoint(q, k, v) + fn1_checkpoint(q.cos(), k, v)
-
-        q = torch.randn(
-            1, 1, 32, 32, device=GPU_TYPE, dtype=torch.bfloat16, requires_grad=True
-        )
-        k = torch.randn(
-            1, 1, 32, 32, device=GPU_TYPE, dtype=torch.bfloat16, requires_grad=True
-        )
-        v = torch.randn(
-            1, 1, 32, 32, device=GPU_TYPE, dtype=torch.bfloat16, requires_grad=True
-        )
-
-        res = torch.compile(
-            fn, backend="inductor", fullgraph=True, mode="reduce-overhead"
-        )(q, k, v)
-        res.sum().backward()
 
     @requires_gpu
     def test_triton_kernel_native(self):
@@ -3351,6 +3323,40 @@ class GraphModule(torch.nn.Module):
                 f_compile = torch.compile(f, fullgraph=True)
                 self.assertEqual(f(x, other), f_compile(x, other))
                 self.assertTrue(called)
+
+
+@skipIfTorchDynamo("Not a torch._dynamo test")
+@torch._dynamo.config.patch(canonicalize_output_graph_node_order=True)
+class TestInvokeSubgraphCompileCUDA(TestCase):
+    @requires_cuda_and_triton
+    def test_ac_rng_cudagraphs(self):
+        # mode="reduce-overhead" (CUDAGraph Trees) is CUDA-specific
+        def fn1(q, k, v):
+            return torch.nn.functional.scaled_dot_product_attention(
+                q, k, v, attn_mask=None, dropout_p=0.5, is_causal=True
+            )
+
+        @nested_compile_region
+        def fn1_checkpoint(q, k, v):
+            return torch.utils.checkpoint.checkpoint(fn1, q, k, v, use_reentrant=False)
+
+        def fn(q, k, v):
+            return fn1_checkpoint(q, k, v) + fn1_checkpoint(q.cos(), k, v)
+
+        q = torch.randn(
+            1, 1, 32, 32, device="cuda", dtype=torch.bfloat16, requires_grad=True
+        )
+        k = torch.randn(
+            1, 1, 32, 32, device="cuda", dtype=torch.bfloat16, requires_grad=True
+        )
+        v = torch.randn(
+            1, 1, 32, 32, device="cuda", dtype=torch.bfloat16, requires_grad=True
+        )
+
+        res = torch.compile(
+            fn, backend="inductor", fullgraph=True, mode="reduce-overhead"
+        )(q, k, v)
+        res.sum().backward()
 
 
 @skipIfTorchDynamo("Not a torch._dynamo test")
