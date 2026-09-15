@@ -9074,7 +9074,7 @@ scipy_lobpcg  | {eq_err_scipy:10.2e}  | {eq_err_general_scipy:10.2e}  | {iters2:
         finally:
             torch._C._set_cpu_allow_fp16_reduced_precision_reduction(prev)
 
-class TestLinalgCuda(TestCase):
+class TestLinalgCUDA(TestCase):
     hw_classification = HardwareClassification.CUDA
 
     """CUDA/ROCm-specific linalg tests (TunableOp, backend library selection)."""
@@ -11809,7 +11809,7 @@ class TestGroupedMM(TestCase):
 instantiate_device_type_tests(TestLinalg, globals())
 instantiate_device_type_tests(TestLinalgDevice, globals(), allow_xpu=True)
 instantiate_device_type_tests(TestLinalgCPU, globals(), only_for=("cpu"))
-instantiate_device_type_tests(TestLinalgCuda, globals(), only_for=("cuda"))
+instantiate_device_type_tests(TestLinalgCUDA, globals(), only_for=("cuda"))
 instantiate_device_type_tests(TestGroupedMM, globals(), allow_mps=True)
 
 if __name__ == '__main__':
