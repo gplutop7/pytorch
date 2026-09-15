@@ -8699,7 +8699,7 @@ class TestLinalgDevice(TestLinalg):
         with self.assertRaisesRegex(RuntimeError, r"\|pivot\| <= LD\.size\(-2\)"):
             torch.linalg.ldl_solve(LD, bad, B, hermitian=hermitian)
 
-class TestLinalgCpu(TestLinalg):
+class TestLinalgCPU(TestLinalg):
     hw_classification = HardwareClassification.CPU
 
     @skipCPUIfNoLapack
@@ -11808,7 +11808,7 @@ class TestGroupedMM(TestCase):
 
 instantiate_device_type_tests(TestLinalg, globals())
 instantiate_device_type_tests(TestLinalgDevice, globals(), allow_xpu=True)
-instantiate_device_type_tests(TestLinalgCpu, globals(), only_for=("cpu"))
+instantiate_device_type_tests(TestLinalgCPU, globals(), only_for=("cpu"))
 instantiate_device_type_tests(TestLinalgCuda, globals(), only_for=("cuda"))
 instantiate_device_type_tests(TestGroupedMM, globals(), allow_mps=True)
 
