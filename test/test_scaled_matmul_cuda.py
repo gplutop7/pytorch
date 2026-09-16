@@ -59,6 +59,7 @@ from torch.testing._internal.common_utils import (
     runOnRocmArch,
     skipIfRocm,
     skipIfTorchDynamo,
+    skipIfXpu,
     TEST_CUDA,
     TestCase,
 )
@@ -1930,6 +1931,7 @@ class TestFP8MatmulDevice(TestCase):
 
 
 
+    @skipIfXpu(msg="issue/pytorch - aten::_scaled_grouped_mm_v2.out not yet implemented on XPU")
     @onlyAccelerator
     @unittest.skipIf(not PLATFORM_SUPPORTS_FP8_GROUPED_GEMM, f8_grouped_msg)
     def test_scaled_grouped_mm_v2_fullgraph(self, device) -> None:
@@ -2947,6 +2949,7 @@ class TestFP8MatmulCUDA(TestCase):
         torch.testing.assert_close(y_lp, y_bf16, atol=8.0e-2, rtol=8.0e-2)
 
 
+    @skipIfXpu(msg="issue/pytorch - aten::_scaled_addmm.out not yet implemented on XPU")
     def test_scaled_addmm_contraction_dim(
         self, device, fake, inplace, contraction_dim, supported
     ):
@@ -2973,6 +2976,7 @@ class TestFP8MatmulCUDA(TestCase):
                     )
 
 
+    @skipIfXpu(msg="issue/pytorch - aten::_scaled_addmm.out not yet implemented on XPU")
     def test_scaled_addmm_cublas_recipes(
         self, device, output_dtype, recipe_a, recipe_b
     ):
@@ -3017,6 +3021,7 @@ class TestFP8MatmulCUDA(TestCase):
         self.assert_scaled_addmm_cudagraph(input, scaled_addmm(input, *args), args)
 
 
+    @skipIfXpu(msg="issue/pytorch - aten::_scaled_addmm.out not yet implemented on XPU")
     @onlyCUDA
     @skipIfRocm
     @unittest.skipIf(not PLATFORM_SUPPORTS_FP8, f8_msg)
@@ -3034,6 +3039,7 @@ class TestFP8MatmulCUDA(TestCase):
         self.assertEqual(op(input.clone(), *args, beta=2), input * 2)
 
 
+    @skipIfXpu(msg="issue/pytorch - aten::_scaled_addmm.out not yet implemented on XPU")
     @onlyCUDA
     @skipIfRocm
     def test_scaled_addmm_fake_tensor(self, device):
@@ -3052,6 +3058,7 @@ class TestFP8MatmulCUDA(TestCase):
             self.assertIs(scaled_addmm_(input, *args), input)
 
 
+    @skipIfXpu(msg="issue/pytorch - aten::_scaled_addmm.out not yet implemented on XPU")
     @onlyCUDA
     @skipIfRocm
     @unittest.skipIf(not PLATFORM_SUPPORTS_FP8, f8_msg)
@@ -3096,6 +3103,7 @@ class TestFP8MatmulCUDA(TestCase):
         self.assertNotIn("triton_poi_fused_copy", source)
 
 
+    @skipIfXpu(msg="issue/pytorch - aten::_scaled_addmm.out not yet implemented on XPU")
     @onlyCUDA
     @skipIfRocm
     @unittest.skipIf(not PLATFORM_SUPPORTS_MX_GEMM, mx_skip_msg)
@@ -3135,6 +3143,7 @@ class TestFP8MatmulCUDA(TestCase):
         self.assert_scaled_addmm_inplace(input.clone(), actual, args, **kwargs)
 
 
+    @skipIfXpu(msg="issue/pytorch - aten::_scaled_addmm.out not yet implemented on XPU")
     @onlyCUDA
     @skipIfRocm
     @unittest.skipIf(not PLATFORM_SUPPORTS_MX_GEMM, mx_skip_msg)
@@ -3201,6 +3210,7 @@ class TestFP8MatmulCUDA(TestCase):
             self.assertEqual(compiled, actual, atol=5e-2, rtol=5e-2)
 
 
+    @skipIfXpu(msg="issue/pytorch - aten::_scaled_addmm.out not yet implemented on XPU")
     @onlyCUDA
     @skipIfRocm
     @unittest.skipIf(not PLATFORM_SUPPORTS_FP8, f8_msg)
@@ -3228,6 +3238,7 @@ class TestFP8MatmulCUDA(TestCase):
         )
 
 
+    @skipIfXpu(msg="issue/pytorch - aten::_scaled_addmm.out not yet implemented on XPU")
     @onlyCUDA
     @skipIfRocm
     @unittest.skipIf(not PLATFORM_SUPPORTS_FP8, f8_msg)
@@ -3254,6 +3265,7 @@ class TestFP8MatmulCUDA(TestCase):
         self.assert_scaled_addmm_inplace(input.clone(), actual, args, **kwargs)
 
 
+    @skipIfXpu(msg="issue/pytorch - aten::_scaled_addmm.out not yet implemented on XPU")
     @onlyCUDA
     @skipIfRocm
     @unittest.skipIf(not PLATFORM_SUPPORTS_FP8, f8_msg)
@@ -3328,6 +3340,7 @@ class TestFP8MatmulCUDA(TestCase):
                 )
 
 
+    @skipIfXpu(msg="issue/pytorch - aten::_scaled_addmm.out not yet implemented on XPU")
     @onlyCUDA
     @skipIfRocm
     @unittest.skipIf(not PLATFORM_SUPPORTS_FP8, f8_msg)
