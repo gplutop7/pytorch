@@ -56,6 +56,7 @@ from torch.testing._internal.common_utils import (
     IS_LINUX,
     TEST_WITH_SLOW,
 )
+from torch.testing._internal.common_utils import HardwareClassification
 
 f8_msg = "FP8 is only supported on H100+, SM 8.9 and MI300+, XPU and CPU devices"
 mx_msg = "MX gemm is only supported on CUDA capability 10.0+ and gfx950/gfx1250"
@@ -393,6 +394,8 @@ class _TestLinalgMixin:
 
 
 class TestLinalg(TestCase):
+    hw_classification = HardwareClassification.GENERIC
+
     def setUp(self):
         super().setUp()
         # Snapshot fp32_precision (not allow_tf32) so the round-trip is exact:
@@ -522,6 +525,8 @@ class TestLinalg(TestCase):
 
 
 class TestLinalgDevice(TestCase, _TestLinalgMixin):
+    hw_classification = HardwareClassification.ACCELERATOR
+
     def _get_other_device(self, dtype=None):
         """Return a device different from self.device_type for error-path testing."""
         if self.device_type != 'cpu':
@@ -8906,6 +8911,7 @@ class TestLinalgSVD(TestCase):
 
 class TestLinalgCudaOnly(TestCase, _TestLinalgMixin):
     """CUDA/ROCm-specific linalg tests (TunableOp, backend library selection)."""
+    hw_classification = HardwareClassification.CUDA
 
     def setUp(self):
         super().setUp()
@@ -11416,6 +11422,7 @@ class TestLinalgCudaOnly(TestCase, _TestLinalgMixin):
 
 class TestLinalgCpu(TestCase):
     """CPU-specific linear algebra tests."""
+    hw_classification = HardwareClassification.CPU
 
     @skipCPUIfNoLapack
     @dtypes(*floating_and_complex_types())
