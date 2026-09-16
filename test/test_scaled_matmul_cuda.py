@@ -51,6 +51,7 @@ from torch.testing._internal.common_device_type import (
 
 from torch.testing._internal.common_xpu import Xe2_Or_Later
 from torch.testing._internal.common_utils import (
+    HardwareClassification,
     IS_WINDOWS,
     MI350_ARCH,
     parametrize,
@@ -734,6 +735,7 @@ def _build_scaled_grouped_mm_kwargs(scale_a, scale_b, offs, format):
     return kwargs[format]
 
 class TestFP8Matmul(TestCase):
+    hw_classification = HardwareClassification.GENERIC
     @skipXPU
     def test_pack_uint4(self):
         """
@@ -752,6 +754,7 @@ class TestFP8Matmul(TestCase):
 
 
 class TestFP8MatmulDevice(TestCase):
+    hw_classification = HardwareClassification.ACCELERATOR
     def _test_tautological_mm(self, device: str,
                               x_dtype: torch.dtype = e4m3_type,
                               y_dtype: torch.dtype = e4m3_type,
@@ -2550,6 +2553,7 @@ class TestFP8MatmulDevice(TestCase):
 
 
 class TestFP8MatmulCUDA(TestCase):
+    hw_classification = HardwareClassification.CUDA
     def assert_scaled_addmm_cudagraph(self, input, expected, args, **kwargs):
         """Check in-place scaled-addmm capture and replay."""
         for _ in range(3):
