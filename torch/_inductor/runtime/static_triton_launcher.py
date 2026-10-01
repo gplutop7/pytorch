@@ -10,6 +10,19 @@ from .triton_compat import ASTSource, CompiledKernel, knobs as triton_knobs
 from .triton_helpers import get_constexprs
 
 
+def _xpu_embedded_binary(kernel: CompiledKernel) -> Any | None:
+    """Return the loadable embedded XPU binary retained on a compiled kernel."""
+    cubin_raw = getattr(kernel, "cubin_raw", None)
+    if cubin_raw is not None:
+        return cubin_raw
+    asm = getattr(kernel, "asm", None)
+    if asm is None:
+        return None
+    # Static XPU launch consumes the native zebin payload only; SPIR-V is not
+    # directly loadable by the static launcher.
+    return asm.get("zebin", None)
+
+
 @functools.lru_cache(None)
 def _tma_arg_helpers():
     """Cached (make_arg, TensorDescriptor) for host-side TMA arg expansion.
@@ -549,7 +562,7 @@ class StaticallyLaunchedXpuKernel(StaticallyLaunchedTritonKernel):
 
     def __init__(self, kernel: CompiledKernel) -> None:
         # pyrefly: ignore [missing-attribute]
-        self.cubin_raw = kernel.asm.get("zebin", None)
+        self.cubin_raw = _xpu_embedded_binary(kernel)
         super().__init__(kernel)
 
     def load_kernel(self, device: int) -> None:

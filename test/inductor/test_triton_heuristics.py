@@ -14,7 +14,10 @@ import sympy
 
 import torch
 from torch._dynamo.testing import rand_strided
-from torch._inductor.runtime.triton_compat import HAS_WARP_SPEC
+from torch._inductor.runtime.triton_compat import (
+    _patch_triton_intel_launcher,
+    HAS_WARP_SPEC,
+)
 from torch._inductor.utils import clone_preserve_strides
 from torch.testing._internal.common_utils import (
     instantiate_parametrized_tests,
@@ -63,6 +66,7 @@ from torch._inductor.runtime.triton_heuristics import (
     CachingAutotuner,
     CachingAutotunerPlugin,
     check_autotune_cache,
+    StaticTritonCompileResult,
     DEFER,
     make_matmul_triton_config,
     template,
@@ -140,6 +144,84 @@ class TestTritonHeuristics(TestCase):
                 return self.inductor_meta["kernel_name"]
 
         self.assertEqual(FakeAutotuner().kernel_name(), "triton_poi_fused_add_0")
+
+    def test_patch_triton_intel_launcher_binds_global_scratch(self):
+        def fake_make_launcher(constants, signature):
+            return """
+    auto cgf = [&](sycl::handler &cgh) {
+        set_scalar_arg<int32_t>(cgh, 0, params[0]);
+        if (shared_memory) {
+            cgh.parallel_for(parallel_work_size, kernel_ptr);
+        } else {
+            cgh.parallel_for(parallel_work_size, kernel_ptr);
+        }
+    };
+"""
+
+        intel_driver = types.SimpleNamespace(make_launcher=fake_make_launcher)
+
+        _patch_triton_intel_launcher(intel_driver)
+
+        patched = intel_driver.make_launcher({}, {})
+        self.assertIn(
+            "set_scalar_arg<void*>(cgh, num_params - 1, &global_scratch);",
+            patched,
+        )
+        self.assertEqual(
+            patched.count(
+                "set_scalar_arg<void*>(cgh, num_params - 1, &global_scratch);"
+            ),
+            1,
+        )
+
+    def test_patch_triton_intel_launcher_warns_on_unexpected_template(self):
+        def fake_make_launcher(constants, signature):
+            return "return unexpected_launcher_template;"
+
+        intel_driver = types.SimpleNamespace(make_launcher=fake_make_launcher)
+
+        with self.assertLogs(
+            "torch._inductor.runtime.triton_compat", level="WARNING"
+        ) as logs:
+            _patch_triton_intel_launcher(intel_driver)
+
+        self.assertIn("global_scratch launcher patch", logs.output[0])
+        self.assertEqual(intel_driver.make_launcher({}, {}), fake_make_launcher({}, {}))
+
+    def test_xpu_static_launch_uses_embedded_zebin_when_cache_file_missing(self):
+        kernel = types.SimpleNamespace(
+            asm={"zebin": b"zebin"},
+            metadata=types.SimpleNamespace(
+                launch_pdl=False,
+                launch_cooperative_grid=False,
+            ),
+            hash="hash",
+            src=types.SimpleNamespace(fn=types.SimpleNamespace(__name__="kernel")),
+        )
+        sentinel = object()
+
+        with config.patch(
+            use_static_triton_launcher=True,
+            cpp_wrapper=False,
+            static_launch_user_defined_triton_kernels=True,
+            strict_static_triton_launcher=False,
+        ):
+            with patch(
+                "torch._inductor.runtime.triton_heuristics.os.path.exists",
+                return_value=False,
+            ), patch(
+                "torch._inductor.runtime.triton_heuristics.statically_launched_kernel_by_device",
+                return_value=sentinel,
+            ):
+                result = StaticTritonCompileResult.can_statically_launch(
+                    kernel,
+                    inductor_meta={},
+                    triton_meta={"device_type": "xpu", "device": 0},
+                    heuristic_type=HeuristicType.POINTWISE,
+                )
+
+        self.assertIs(result, sentinel)
+        self.assertIsNone(kernel._cubin_path)
 
     def test_triton_config(self):
         """

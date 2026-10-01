@@ -13,6 +13,7 @@ from torch._dynamo.device_interface import get_interface_for_device
 from torch._inductor.codecache import PyCodeCache
 from torch._inductor.runtime import triton_helpers
 from torch._inductor.runtime.static_triton_launcher import (
+    _xpu_embedded_binary,
     statically_launched_kernel_by_device,
     StaticallyLaunchedCudaKernel,
     StaticallyLaunchedXpuKernel,
@@ -113,6 +114,39 @@ class TestStaticTritonLauncherUnit(TestCase):
         launcher.close()
         self.assertIsNone(launcher.function)
         self.assertIsNone(launcher.module)
+
+    def test_xpu_launcher_ignores_spv_only_payloads(self):
+        fn = SimpleNamespace(
+            __name__="spv_only_kernel",
+            arg_names=["out"],
+            params=[],
+        )
+        src = SimpleNamespace(fn=fn, signature={0: "*fp32"}, constants={})
+        metadata = SimpleNamespace(num_warps=4, shared=0, num_ctas=1)
+
+        class FakeCompiledKernel(SimpleNamespace):
+            launch_enter_hook = None
+            launch_exit_hook = None
+
+        compiled_kernel = FakeCompiledKernel(
+            src=src,
+            metadata=metadata,
+            _cubin_path="/tmp/spv_only_kernel.spv",
+            hash="hash",
+            asm={"spv": b"spv"},
+        )
+
+        launcher = StaticallyLaunchedXpuKernel(compiled_kernel)
+
+        self.assertIsNone(launcher.cubin_raw)
+
+    def test_xpu_embedded_binary_prefers_retained_native_payload(self):
+        compiled_kernel = SimpleNamespace(
+            cubin_raw=b"retained-zebin",
+            asm={"zebin": b"asm-zebin", "spv": b"spv"},
+        )
+
+        self.assertEqual(_xpu_embedded_binary(compiled_kernel), b"retained-zebin")
 
     def test_fast_launcher_keeps_kernel_owner_alive(self):
         """

@@ -84,6 +84,7 @@ from .runtime_utils import (
     validate_triton_config,
 )
 from .static_triton_launcher import (
+    _xpu_embedded_binary,
     statically_launched_kernel_by_device,
     StaticallyLaunchedCudaKernel,
     StaticallyLaunchedXpuKernel,
@@ -3033,6 +3034,7 @@ class StaticTritonCompileResult(CompileResult[_T]):
         triton_meta: TritonMeta,
         heuristic_type: HeuristicType,
     ) -> _KernelType | None:
+        """Return a static launcher wrapper when the compiled kernel is eligible."""
         if not torch._inductor.config.use_static_triton_launcher:
             return None
 
@@ -3079,9 +3081,15 @@ class StaticTritonCompileResult(CompileResult[_T]):
             )
 
             if not os.path.exists(cubin_location):
-                raise CannotStaticallyLaunchKernel(
-                    f"Cubin path not found: {cubin_location}"
-                )
+                if (
+                    triton_meta.get("device_type") == "xpu"
+                    and _xpu_embedded_binary(kernel) is not None
+                ):
+                    kernel._cubin_path = None
+                else:
+                    raise CannotStaticallyLaunchKernel(
+                        f"Cubin path not found: {cubin_location}"
+                    )
 
             else:
                 kernel._cubin_path = cubin_location
