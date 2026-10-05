@@ -3038,7 +3038,6 @@ class CommonTemplate:
     @xfail_if_mps_unimplemented
     @xfail_if_triton_cpu_no_avx512_bf16
     @skipCUDAIf(True, "No _dyn_quant_pack_4bit_weight implementation on CUDA")
-    @skipIfXpu(msg="No _dyn_quant_pack_4bit_weight implementation on XPU")
     # Pallas codegen doesn't handle reduction axis after FloorDiv(ModularIndexing) simplification
     @xfail_if_pallas
     def test__dyn_quant_pack_4bit_weight_fp32(self):
@@ -3075,7 +3074,6 @@ class CommonTemplate:
     @xfail_if_mps_unimplemented
     @xfail_if_triton_cpu_no_avx512_bf16
     @skipCUDAIf(True, "No _dyn_quant_pack_4bit_weight implementation on CUDA")
-    @skipIfXpu(msg="No _dyn_quant_pack_4bit_weight implementation on XPU")
     @skip_if_halide  # bf16
     # Pallas codegen doesn't handle reduction axis after FloorDiv(ModularIndexing) simplification
     @xfail_if_pallas
@@ -3120,7 +3118,6 @@ class CommonTemplate:
     # Pallas codegen doesn't handle reduction axis after FloorDiv(ModularIndexing) simplification
     @xfail_if_pallas
     @skipCUDAIf(True, "No _dyn_quant_matmul_4bit implementation on CUDA")
-    @skipIfXpu(msg="No _dyn_quant_matmul_4bit implementation on XPU")
     def test__dyn_quant_matmul_4bit_fp32_input(self):
         q_group = 32
         m = 32
@@ -3167,7 +3164,6 @@ class CommonTemplate:
         IS_ARM64 and not IS_CPU_EXT_SVE_SUPPORTED
     )  # see https://github.com/pytorch/pytorch/issues/170787
     @skipCUDAIf(True, "No _dyn_quant_matmul_4bit implementation on CUDA")
-    @skipIfXpu(msg="No _dyn_quant_matmul_4bit implementation on XPU")
     @skip_if_halide  # bf16
     def test__dyn_quant_matmul_4bit_bf16_input(self):
         m = 32

@@ -4205,10 +4205,12 @@
 - func: _dyn_quant_pack_4bit_weight(Tensor weights, Tensor scales_zeros, Tensor? bias, int block_size, int in_features, int out_features) -> Tensor
   dispatch:
     CPU: _dyn_quant_pack_4bit_weight_cpu
+    XPU: _dyn_quant_pack_4bit_weight_xpu
 
 - func: _dyn_quant_matmul_4bit(Tensor inp, Tensor packed_weights, int block_size, int in_features, int out_features) -> Tensor
   dispatch:
     CPU: _dyn_quant_matmul_4bit_cpu
+    XPU: _dyn_quant_matmul_4bit_xpu
 
 - func: _weight_int8pack_mm(Tensor self, Tensor mat2, Tensor scales) -> Tensor
   dispatch:
