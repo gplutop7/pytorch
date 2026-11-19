@@ -13293,7 +13293,7 @@ class TestGroupedMM(TestCase):
         self.grouped_mm_helper(a, b, offs, backward=False)
 
 instantiate_device_type_tests(TestLinalgDevice, globals(), allow_xpu=True)
-instantiate_device_type_tests(TestLinalgSVD, globals(), allow_mps=True)
+instantiate_device_type_tests(TestLinalgSVD, globals(), allow_mps=True, allow_xpu=True)
 instantiate_device_type_tests(TestLinalgCudaOnly, globals(), only_for=("cuda",))
 instantiate_device_type_tests(TestLinalgCpuOnly, globals(), only_for=("cpu",))
 instantiate_device_type_tests(TestGroupedMM, globals(), allow_mps=True, allow_xpu=True)
