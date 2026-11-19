@@ -9095,6 +9095,8 @@ class TestLinalgDevice(_TestLinalgMixin, TestCase):
 
 
 class TestLinalgSVD(TestCase):
+    hw_classification = HardwareClassification.ACCELERATOR
+
     @skipCPUIfNoLapack
     @skipCUDAIfNoCusolver
     @dtypes(torch.float32, torch.complex64)
@@ -12777,6 +12779,8 @@ _GROUPED_MM_CK_TILE_CONFIGS = {
 
 
 class TestGroupedMM(TestCase):
+    hw_classification = HardwareClassification.ACCELERATOR
+
     @preserves_device_selection
     def setUp(self):
         super().setUp()
@@ -12948,7 +12952,7 @@ class TestGroupedMM(TestCase):
         offs = torch.tensor(offsets, device=device, dtype=torch.int32)
         self.grouped_mm_helper(a, b, offs)
 
-    @onlyOn(["cuda", "mps", "xpu"])
+    @onlyAccelerator
     @skipCUDAIf(not SM80OrLater, "Grouped gemm supported only on SM80 or greater")
     @dtypes(torch.bfloat16)
     def test_grouped_mm_large_stride_fallback(self, device, dtype):
@@ -12967,7 +12971,7 @@ class TestGroupedMM(TestCase):
         with self.assertRaisesRegex(RuntimeError, "same dtype"):
             F.grouped_mm(a, b, offs=offs)
 
-    @onlyOn(["cuda", "mps", "xpu"])
+    @onlyAccelerator
     @skipCUDAIf(not SM80OrLater, "Grouped gemm supported only on SM80 or greater")
     @serialTest()
     @largeTensorTest("6GB")
